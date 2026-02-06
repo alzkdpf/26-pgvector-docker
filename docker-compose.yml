@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  pgvector:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pgvector-db
+    restart: unless-stopped
+
+    # Environment variables for PostgreSQL configuration
+    environment:
+      # Database credentials (configure these!)
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: ${POSTGRES_DB:-vectordb}
+
+      # PostgreSQL configuration
+      PGDATA: /var/lib/postgresql/data/pgdata
+
+    # Port mapping (customize external port via POSTGRES_PORT)
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+
+    # Volume mounts for data persistence and backup
+    volumes:
+      # Main data volume - mount to host for easy backup
+      - pgvector_data:/var/lib/postgresql/data
+
+      # Backup directory - mount to host for backup scripts access
+      - ./backups:/backups
+      # Custom PostgreSQL configuration (optional)
+      # - ./postgresql.conf:/etc/postgresql/postgresql.conf
+
+      # Health check
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-vectordb}" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    # Resource limits (adjust as needed)
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+
+volumes:
+  pgvector_data:
+    driver: local
